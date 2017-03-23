@@ -12,6 +12,8 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 
+import rabbitmq.ChannelCallable;
+
 public class RabbitMqManager implements ShutdownListener {
 
 	private final static Logger LOGGER = Logger.getLogger(RabbitMqManager.class.getName());
@@ -86,6 +88,20 @@ public class RabbitMqManager implements ShutdownListener {
 		} catch (final Exception e) {
 			LOGGER.log(Level.SEVERE, "Failed to close channel: " + channel, e);
 		}
+	}
+
+	public <T> T call(final ChannelCallable<T> callable) {
+		final Channel channel = createChannel();
+		if (channel != null) {
+			try {
+				return callable.call(channel);
+			} catch (final Exception e) {
+				LOGGER.log(Level.SEVERE, "Failed to run: " + callable.getDescription() + " on channel: " + channel, e);
+			} finally {
+				closeChannel(channel);
+			}
+		}
+		return null;
 	}
 
 }
