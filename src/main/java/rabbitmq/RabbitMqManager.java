@@ -46,6 +46,7 @@ public class RabbitMqManager implements ShutdownListener {
 		}, 15, TimeUnit.SECONDS);
 	}
 
+	@Override
 	public void shutdownCompleted(final ShutdownSignalException cause) {
 		// reconnect only on unexpected errors
 		if (!cause.isInitiatedByApplication()) {
