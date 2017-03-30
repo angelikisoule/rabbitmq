@@ -1,6 +1,8 @@
 package rabbitmq;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -9,6 +11,7 @@ import javax.inject.Inject;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.AMQP.Queue.BindOk;
 import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.GetResponse;
 
 public class UserMessageManager {
 
@@ -37,7 +40,7 @@ public class UserMessageManager {
 	}
 
 	public String sendUserMessage(final long userId, final String jsonMessage) {
-		
+
 		return rabbitMqManager.call(new ChannelCallable<String>() {
 			public String getDescription() {
 				return "Sending message to user: " + userId;
@@ -57,7 +60,7 @@ public class UserMessageManager {
 			}
 		});
 	}
-	
+
 	private BindOk declareUserMessageQueue(final String queue, final Channel channel) throws IOException {
 		// survive a server restart
 		boolean durable = true;
@@ -73,4 +76,25 @@ public class UserMessageManager {
 		return channel.queueBind(queue, USER_INBOXES_EXCHANGE, routingKey);
 	}
 
+	public List<String> fetchUserMessages(final long userId) {
+		return rabbitMqManager.call(new ChannelCallable<List<String>>() {
+			@Override
+			public String getDescription() {
+				return "Fetching messages for user: " + userId;
+			}
+
+			@Override
+			public List<String> call(final Channel channel) throws IOException {
+				List<String> messages = new ArrayList<>();
+				String queue = getUserInboxQueue(userId);
+				boolean autoAck = true;
+				GetResponse getResponse;
+				while ((getResponse = channel.basicGet(queue, autoAck)) != null) {
+					final String contentEncoding = getResponse.getProps().getContentEncoding();
+					messages.add(new String(getResponse.getBody(), contentEncoding));
+				}
+				return messages;
+			}
+		});
+	}
 }
